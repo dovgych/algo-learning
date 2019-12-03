@@ -153,13 +153,17 @@ def fit_circle_to_data(data, n_iter, max_noise, sufficient_ratio):
     return best_params
 
 
-def fit_model_to_data(data, model_type, n_iter, max_noise, sufficient_ratio):
+def fit_model_to_data(data, model_type, max_noise, model_ratio, desired_success_probablility, sufficient_ratio):
     assert(model_type in MODEL_TYPES)
 
     params = []
     if model_type == LINE:
+        n_iter = round(math.log(1 - desired_success_probablility) / math.log(1 - model_ratio**2))
+        print('Trying to fir a line to data within {} iterations'.format(n_iter))
         params = fit_line_to_data(data, n_iter, max_noise, sufficient_ratio)
     elif model_type == CIRCLE:
+        n_iter = round(math.log(1 - desired_success_probablility) / math.log(1 - model_ratio**2 * (1-model_ratio)))
+        print('Trying to fir a circle to data within {} iterations'.format(n_iter))
         params = fit_circle_to_data(data, n_iter, max_noise, sufficient_ratio)
 
     return params
@@ -170,10 +174,11 @@ if __name__ == '__main__':
     pi = math.pi
 
     MODEL_RATIO = 0.2
-    X, model = noisy_line_data(500, MODEL_RATIO, ALLOWED_NOISE)
+    X, model = noisy_line_data(1000, MODEL_RATIO, ALLOWED_NOISE)
     print('Actual model: m = {}, n = {}'.format(model['m'], model['n']))
-    params = fit_model_to_data(data = X, model_type = LINE, n_iter = 40,
-                               max_noise=ALLOWED_NOISE*2, sufficient_ratio = MODEL_RATIO*0.8)
+    params = fit_model_to_data(data = X, model_type = LINE, max_noise=ALLOWED_NOISE*2,
+                               model_ratio=MODEL_RATIO, desired_success_probablility = 0.9,
+                               sufficient_ratio = MODEL_RATIO * 0.95)
     min_x = np.min(X[:,0])
     min_y = min_x * params[0] + params[1]
     max_x = np.max(X[:,0])
@@ -187,10 +192,11 @@ if __name__ == '__main__':
     plt.plot(X[:,0], X[:,1], 'bo')
     plt.show()
 
-    X, model = noisy_circle_data(500, MODEL_RATIO, ALLOWED_NOISE)
+    X, model = noisy_circle_data(1000, MODEL_RATIO, ALLOWED_NOISE)
 
-    params = fit_model_to_data(data = X, model_type = CIRCLE, n_iter = 100,
-                               max_noise=ALLOWED_NOISE*2, sufficient_ratio = MODEL_RATIO*0.8)
+    params = fit_model_to_data(data = X, model_type = CIRCLE, max_noise=ALLOWED_NOISE*2,
+                               model_ratio=MODEL_RATIO, desired_success_probablility = 0.9,
+                               sufficient_ratio = MODEL_RATIO * 0.95)
 
     print("Actual model: r = {}, cx = {}, cy = {}".format(model['r'], model['cx'], model['cy']))
     plt.plot(X[:,0], X[:,1], 'bo')
