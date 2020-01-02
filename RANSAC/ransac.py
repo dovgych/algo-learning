@@ -169,6 +169,13 @@ def fit_model_to_data(data, model_type, max_noise, model_ratio, desired_success_
     return params
 
 
+def findTransformationMatrix(srcImage, dstImage):
+    transformationMatrix = None
+
+
+    return transformationMatrix
+
+
 if __name__ == '__main__':
 
     pi = math.pi
