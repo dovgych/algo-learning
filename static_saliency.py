@@ -1,9 +1,9 @@
 import argparse
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
-
-def computeFineGrainedSaliency(image):
+def compute_fine_grained_saliency(image):
     # initialize OpenCV's static fine grained saliency detector and
     # compute the saliency map
     saliency = cv2.saliency.StaticSaliencyFineGrained_create()
@@ -16,7 +16,7 @@ def computeFineGrainedSaliency(image):
     return saliencyMap
 
 
-def thresholdImage(image, thresh_type=cv2.THRESH_OTSU, thresh_value=0):
+def threshold_image(image, thresh_type=cv2.THRESH_OTSU, thresh_value=0):
     valid_types = [cv2.THRESH_BINARY, cv2.THRESH_BINARY_INV, cv2.THRESH_OTSU,
                    cv2.THRESH_TOZERO, cv2.THRESH_TOZERO_INV, cv2.THRESH_TRIANGLE,
                    cv2.THRESH_TRUNC]
@@ -32,7 +32,7 @@ def thresholdImage(image, thresh_type=cv2.THRESH_OTSU, thresh_value=0):
     return cv2.threshold(image, thresh_value, 255, thresh_type)[1]
 
 
-def findKeypointsORB(gray_image):
+def find_keypoints_orb(gray_image):
     # Initiate ORB object
     orb = cv2.ORB_create(nfeatures=20)
     # find the keypoints with ORB
@@ -45,7 +45,40 @@ def findKeypointsORB(gray_image):
     # cv2.imshow('ORB keypoints', final_keypoints)
 
 
-def randomAffineTransformation(img):
+def image_detect_and_compute(detector, img):
+    """Detect and compute interest points and their descriptors."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    kp, des = detector.detectAndCompute(gray, None)
+    return gray, kp, des
+
+
+def draw_image_matches(detector, img1_name, img2_name, nmatches=10):
+    """Draw ORB feature matches of the given two images."""
+    img1, kp1, des1 = image_detect_and_compute(detector, img1_name)
+    img2, kp2, des2 = image_detect_and_compute(detector, img2_name)
+
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(des1, des2)
+    matches = sorted(matches, key=lambda x: x.distance)  # Sort matches by distance.  Best come first.
+
+    img_matches = cv2.drawMatches(img1, kp1, img2, kp2, matches[:nmatches], img2, flags=2)  # Show top 10 matches
+    plt.figure(figsize=(16, 16))
+    plt.title(type(detector))
+    plt.imshow(img_matches);
+    plt.show()
+
+
+def get_image_matches(detector, img1_name, img2_name):
+    img1, kp_query, des_query = image_detect_and_compute(detector, img1_name)
+    img2, kp_train, des_train = image_detect_and_compute(detector, img2_name)
+
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(des_query, des_train)
+    matches = sorted(matches, key=lambda x: x.distance)  # Sort matches by distance.  Best come first
+    return matches, kp_query, des_query, kp_train, des_train
+
+
+def random_affine_transformation(img):
     # Not actually true random transformation, but some parameters are randomized
     rows, cols = img.shape[:2]
     a = np.random.random()
@@ -87,11 +120,11 @@ if __name__ == '__main__':
     image = cv2.imread(args['image'])
     img = cv2.imread(args['image'])
 
-    saliencyMap = computeFineGrainedSaliency(image)
+    saliencyMap = compute_fine_grained_saliency(image)
     # if we would like a *binary* map that we could process for contours,
     # compute convex hull's, extract bounding boxes, etc., we can
     # additionally threshold the saliency map
-    threshMap = thresholdImage((saliencyMap*255).astype("uint8"), cv2.THRESH_OTSU, 0)
+    threshMap = threshold_image((saliencyMap * 255).astype("uint8"), cv2.THRESH_OTSU, 0)
 
 
     # show the images
@@ -146,7 +179,7 @@ if __name__ == '__main__':
     # keypoints = orb.detect(gray, None)
     # compute the descriptors with ORB
     # keypoints, descriptors = orb.compute(gray, keypoints)
-    keypoints, descriptors = findKeypointsORB(gray)
+    keypoints, descriptors = find_keypoints_orb(gray)
     # draw only the location of the keypoints without size or orientation
     final_keypoints = cv2.drawKeypoints(image, keypoints, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS, outImage=image)
     cv2.imshow('ORB keypoints', final_keypoints)
@@ -185,7 +218,7 @@ if __name__ == '__main__':
     # keypoints = orb.detect(gray, None)
     # compute the descriptors with ORB
     # keypoints, descriptors = orb.compute(gray, keypoints)
-    keypoints, descriptors = findKeypointsORB(gray)
+    keypoints, descriptors = find_keypoints_orb(gray)
     # draw only the location of the keypoints without size or orientation
     img_output = cv2.drawKeypoints(img_output, keypoints, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS, outImage=img_output)
     cv2.imshow('ORB keypoints on perspective', img_output)
